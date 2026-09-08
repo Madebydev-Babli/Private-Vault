@@ -4,7 +4,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-type Letter = { _id: string; title: string; content: string; date: string };
+type Letter = {
+  _id: string;
+  title: string;
+  content: string;
+  date: string;
+  author?: "ritika" | "riya";
+  recipient?: "ritika" | "riya";
+};
 
 function formatDate(date: string) {
   return new Intl.DateTimeFormat("en", {
@@ -18,6 +25,8 @@ export default function LetterReader({ letter }: { letter: Letter }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const author = letter.author ?? "ritika";
+  const recipient = letter.recipient ?? "riya";
 
   async function removeLetter() {
     setDeleting(true);
@@ -42,8 +51,13 @@ export default function LetterReader({ letter }: { letter: Letter }) {
       </header>
       <article className="letter-reader-paper">
         <p className="home-eyebrow">
-          {formatDate(letter.date)} / a page for us
+          {formatDate(letter.date)} / from{" "}
+          {author === "ritika" ? "ritika" : "riya"}
         </p>
+        <div className="letter-reader-meta">
+          From {author === "ritika" ? "ritika" : "riya"} → To{" "}
+          {recipient === "ritika" ? "ritika" : "riya"}
+        </div>
         <h1>{letter.title}</h1>
         <div className="letter-reader-rule" />
         <div className="letter-reader-content">

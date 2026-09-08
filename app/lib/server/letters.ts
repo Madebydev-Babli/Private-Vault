@@ -3,9 +3,38 @@ import { randomUUID } from "node:crypto";
 import { getDb } from "./db";
 import { decryptText, encryptText, type EncryptedValue } from "./encryption";
 
+export const letterPeople = ["ritika", "riya"] as const;
+export type LetterPerson = (typeof letterPeople)[number];
+
+export function normalizeLetterPerson(value: unknown): LetterPerson {
+  return value === "ritika" || value === "riya" ? value : "ritika";
+}
+
+export type LetterPair = {
+  author: LetterPerson;
+  recipient: LetterPerson;
+};
+
+export function normalizeLetterPair(
+  author: unknown,
+  recipient: unknown,
+): LetterPair {
+  const safeAuthor = normalizeLetterPerson(author);
+  const safeRecipient = normalizeLetterPerson(recipient);
+  if (safeAuthor === safeRecipient) {
+    return {
+      author: safeAuthor,
+      recipient: safeAuthor === "ritika" ? "riya" : "ritika",
+    };
+  }
+  return { author: safeAuthor, recipient: safeRecipient };
+}
+
 export type LetterDocument = {
   _id: string;
   title: string;
+  author?: LetterPerson;
+  recipient?: LetterPerson;
   encryptedContent: string;
   iv: string;
   authTag: string;
@@ -14,7 +43,13 @@ export type LetterDocument = {
   updatedAt: Date;
 };
 
-export type LetterInput = { title: string; content: string; date: string };
+export type LetterInput = {
+  title: string;
+  content: string;
+  date: string;
+  author: LetterPerson;
+  recipient: LetterPerson;
+};
 const collectionName = "letters";
 
 function cleanText(value: unknown, maxLength: number) {
@@ -27,8 +62,15 @@ export function parseLetterInput(body: unknown): LetterInput | null {
   const title = cleanText(input.title, 140);
   const content = cleanText(input.content, 20_000);
   const date = cleanText(input.date, 30);
+  const { author, recipient } = normalizeLetterPair(
+    input.author,
+    input.recipient,
+  );
+
   if (!title || !content || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-  return { title, content, date };
+  if (author === recipient) return null;
+
+  return { title, content, date, author, recipient };
 }
 
 export async function listLetters() {
@@ -55,11 +97,17 @@ export function decryptLetterContent(letter: LetterDocument) {
 }
 
 export async function createLetter(input: LetterInput) {
+  const { author, recipient } = normalizeLetterPair(
+    input.author,
+    input.recipient,
+  );
   const encrypted = encryptText(input.content);
   const now = new Date();
   const letter: LetterDocument = {
     _id: randomUUID(),
     title: input.title,
+    author,
+    recipient,
     date: input.date,
     encryptedContent: encrypted.ciphertext,
     iv: encrypted.iv,
@@ -78,8 +126,14 @@ export async function updateLetter(
   input: LetterInput,
   reencrypt: boolean,
 ) {
+  const { author, recipient } = normalizeLetterPair(
+    input.author,
+    input.recipient,
+  );
   const fields: Partial<LetterDocument> = {
     title: input.title,
+    author,
+    recipient,
     date: input.date,
     updatedAt: new Date(),
   };
@@ -105,9 +159,15 @@ export async function deleteLetter(id: string) {
 }
 
 export function serializeLetter(letter: LetterDocument) {
+  const { author, recipient } = normalizeLetterPair(
+    letter.author,
+    letter.recipient,
+  );
   return {
     _id: letter._id,
     title: letter.title,
+    author,
+    recipient,
     date: letter.date,
     createdAt: letter.createdAt.toISOString(),
     updatedAt: letter.updatedAt.toISOString(),

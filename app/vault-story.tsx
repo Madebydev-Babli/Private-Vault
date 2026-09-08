@@ -346,13 +346,13 @@ function StoryExperience() {
             INTO MY LIFE
           </h2>
           <p className="panel-quote">
-            "I don&apos;t think I ever told you enough how much your presence
+            &quot;I don&apos;t think I ever told you enough how much your presence
             has meant to me.
             <br />
             <br />
             Somewhere between the ordinary days, the stupid jokes, and all the
             moments we never thought we&apos;d remember, you became part of my
-            story."
+            story.&quot;
           </p>
         </div>
       </div>
@@ -391,7 +391,7 @@ function StoryExperience() {
         <div className="panel-copy panel-copy--chaos">
           <p className="panel-label">04</p>
           <h2>OUR CHAOS</h2>
-          <p className="panel-quote">"We were never particularly normal."</p>
+          <p className="panel-quote">&quot;We were never particularly normal.&quot;</p>
           <p className="panel-quote panel-quote--small">
             And honestly, I wouldn&apos;t change a thing.
           </p>

@@ -1,10 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 
-type Letter = { _id: string; title: string; date: string; createdAt: string };
+type Letter = {
+  _id: string;
+  title: string;
+  date: string;
+  author?: "ritika" | "riya";
+  recipient?: "ritika" | "riya";
+  createdAt: string;
+};
 
 function formatDate(date: string) {
   return new Intl.DateTimeFormat("en", {
@@ -16,6 +23,10 @@ function formatDate(date: string) {
 
 export default function LetterArchive({ letters }: { letters: Letter[] }) {
   const archiveRef = useRef<HTMLElement | null>(null);
+  const [filter, setFilter] = useState<"ritika" | "riya">("ritika");
+  const visibleLetters = letters.filter(
+    (letter) => (letter.author ?? "ritika") === filter,
+  );
   useEffect(() => {
     if (!archiveRef.current) return;
     const context = gsap.context(() => {
@@ -44,7 +55,22 @@ export default function LetterArchive({ letters }: { letters: Letter[] }) {
           + Write a letter
         </Link>
       </section>
-      {letters.length === 0 ? (
+      <div className="two-sides-filter">
+        <p className="two-sides-filter-label">Two sides</p>
+        <div className="two-sides-filter-row">
+          {(["ritika", "riya"] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              className={`two-sides-filter-pill ${filter === option ? "two-sides-filter-pill--active" : ""}`}
+              onClick={() => setFilter(option)}
+            >
+              {option === "ritika" ? "ritika" : "riya"}
+            </button>
+          ))}
+        </div>
+      </div>
+      {visibleLetters.length === 0 ? (
         <section className="letter-empty">
           <span>01</span>
           <h2>Nothing here yet.</h2>
@@ -55,7 +81,7 @@ export default function LetterArchive({ letters }: { letters: Letter[] }) {
         </section>
       ) : (
         <section className="letter-archive-list" aria-label="Letters archive">
-          {letters.map((letter, index) => (
+          {visibleLetters.map((letter, index) => (
             <article
               className={`letter-archive-card letter-archive-card--${index % 2 ? "right" : "left"}`}
               key={letter._id}
@@ -65,11 +91,13 @@ export default function LetterArchive({ letters }: { letters: Letter[] }) {
               </div>
               <div className="letter-archive-card-paper">
                 <p className="home-eyebrow">
-                  {formatDate(letter.date)} / sealed
+                  {formatDate(letter.date)} /{" "}
+                  {letter.author === "ritika" ? "from ritika" : "from riya"}
                 </p>
                 <h2>{letter.title}</h2>
                 <p className="letter-archive-excerpt">
-                  A private page kept for another day.
+                  💌 From {letter.author === "ritika" ? "ritika" : "riya"} →{" "}
+                  {letter.recipient === "ritika" ? "ritika" : "riya"}
                 </p>
                 <div>
                   <Link href={`/vault/letters/${letter._id}`}>

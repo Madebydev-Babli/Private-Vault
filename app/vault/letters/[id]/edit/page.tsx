@@ -31,6 +31,8 @@ export default async function EditLetterPage({
           title: letter.title,
           date: letter.date,
           content: decryptLetterContent(letter),
+          author: letter.author,
+          recipient: letter.recipient,
         }}
       />
     </main>

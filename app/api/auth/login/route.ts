@@ -4,6 +4,7 @@ import {
   sessionMaxAge,
   verifyCredentials,
 } from "@/app/lib/server/auth";
+import { sendLoginNotification } from "@/app/lib/server/email";
 
 const attempts = new Map<string, { count: number; resetAt: number }>();
 const windowMs = 15 * 60 * 1000;
@@ -55,14 +56,19 @@ export async function POST(request: Request) {
       );
     }
 
+    const sessionToken = await createSession();
+
     const response = NextResponse.json({ authenticated: true });
-    response.cookies.set("vault_session", await createSession(), {
+
+    response.cookies.set("vault_session", sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: sessionMaxAge,
       path: "/",
     });
+
+    await sendLoginNotification(email);
 
     return response;
   } catch {

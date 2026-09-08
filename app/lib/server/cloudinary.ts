@@ -25,16 +25,17 @@ function getCloudinary() {
 export type CloudinaryMedia = {
   url: string;
   publicId: string;
-  resourceType: string;
+  resourceType: "image" | "video";
   format?: string;
 };
 
-export async function uploadMemoryImage(file: File): Promise<CloudinaryMedia> {
+export async function uploadMemoryMedia(file: File): Promise<CloudinaryMedia> {
   const buffer = Buffer.from(await file.arrayBuffer());
+  const resourceType = file.type.startsWith("video/") ? "video" : "image";
   const result = await new Promise<UploadApiResponse>((resolve, reject) => {
     getCloudinary()
       .uploader.upload_stream(
-        { folder: "memento/memories", resource_type: "image" },
+        { folder: "memento/memories", resource_type: resourceType },
         (error, response) =>
           error || !response
             ? reject(error ?? new Error("Cloudinary upload failed."))
@@ -46,12 +47,14 @@ export async function uploadMemoryImage(file: File): Promise<CloudinaryMedia> {
   return {
     url: result.secure_url,
     publicId: result.public_id,
-    resourceType: result.resource_type,
+    resourceType,
     ...(result.format ? { format: result.format } : {}),
   };
 }
 
-export async function deleteCloudinaryMedia(media: CloudinaryMedia) {
+export async function deleteCloudinaryMedia(
+  media: Pick<CloudinaryMedia, "publicId" | "resourceType">,
+) {
   return getCloudinary().uploader.destroy(media.publicId, {
     resource_type: media.resourceType,
   });

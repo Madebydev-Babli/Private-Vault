@@ -31,8 +31,7 @@ export default async function EditMemoryPage({
           title: memory.title,
           story: memory.story,
           date: memory.date,
-          mood: memory.mood,
-          location: memory.location ?? "",
+          perspective: memory.perspective ?? "ritika",
           media: memory.media,
         }}
       />

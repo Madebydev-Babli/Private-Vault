@@ -3,11 +3,11 @@ import { NextResponse } from "next/server";
 import { isSessionValid } from "@/app/lib/server/auth";
 import {
   deleteCloudinaryMedia,
-  uploadMemoryImage,
+  uploadMemoryMedia,
 } from "@/app/lib/server/cloudinary";
 import {
   createMemory,
-  getMemoryImage,
+  getMemoryMedia,
   listMemories,
   parseMemoryFields,
   serializeMemory,
@@ -49,25 +49,25 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  let uploadedMedia: Awaited<ReturnType<typeof uploadMemoryImage>> | undefined;
+  const uploadedMedia: Awaited<ReturnType<typeof uploadMemoryMedia>>[] = [];
   try {
-    const image = getMemoryImage(formData);
-    uploadedMedia = image ? await uploadMemoryImage(image) : undefined;
+    const files = getMemoryMedia(formData);
+    for (const file of files) uploadedMedia.push(await uploadMemoryMedia(file));
     const memory = await createMemory({
       ...input,
-      ...(uploadedMedia ? { media: uploadedMedia } : {}),
+      ...(uploadedMedia.length ? { media: uploadedMedia } : {}),
     });
     return NextResponse.json(
       { memory: serializeMemory(memory) },
       { status: 201 },
     );
   } catch (error) {
-    if (uploadedMedia) {
+    for (const media of uploadedMedia) {
       try {
-        await deleteCloudinaryMedia(uploadedMedia);
+        await deleteCloudinaryMedia(media);
       } catch (cleanupError) {
         console.error(
-          "Unable to clean up the uploaded memory image.",
+          "Unable to clean up uploaded memory media.",
           cleanupError,
         );
       }

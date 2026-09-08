@@ -4,20 +4,24 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+type Media = {
+  url: string;
+  publicId?: string;
+  resourceType?: "image" | "video" | string;
+};
 type Memory = {
   _id: string;
   title: string;
   story: string;
   date: string;
-  mood: string;
-  location?: string;
-  media?: string | { url: string };
+  perspective?: "ritika" | "riya";
+  media?: string | Media | Media[];
 };
-
-function mediaUrl(media: Memory["media"]) {
-  return typeof media === "string" ? media : media?.url;
+function mediaList(value: Memory["media"]): Media[] {
+  if (!value) return [];
+  if (typeof value === "string") return [{ url: value }];
+  return Array.isArray(value) ? value : [value];
 }
-
 function formatDate(date: string) {
   return new Intl.DateTimeFormat("en", {
     month: "long",
@@ -28,9 +32,13 @@ function formatDate(date: string) {
 
 export default function MemoryDetail({ memory }: { memory: Memory }) {
   const router = useRouter();
+  const media = mediaList(memory.media);
+  const [selected, setSelected] = useState(0);
+  const [lightbox, setLightbox] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
+  const current = media[selected];
+  const perspective = memory.perspective ?? "ritika";
   async function removeMemory() {
     setDeleting(true);
     await fetch(`/api/memories/${memory._id}`, {
@@ -40,7 +48,6 @@ export default function MemoryDetail({ memory }: { memory: Memory }) {
     router.push("/vault/memories");
     router.refresh();
   }
-
   return (
     <main className="memory-detail-page">
       <header className="memory-detail-top">
@@ -49,8 +56,18 @@ export default function MemoryDetail({ memory }: { memory: Memory }) {
       </header>
       <article className="memory-detail-content">
         <div className="memory-detail-media">
-          {mediaUrl(memory.media) ? (
-            <img src={mediaUrl(memory.media)} alt={memory.title} />
+          {current ? (
+            current.resourceType === "video" ? (
+              <video src={current.url} controls playsInline />
+            ) : (
+              <button
+                className="memory-detail-image-button"
+                type="button"
+                onClick={() => setLightbox(true)}
+              >
+                <img src={current.url} alt={memory.title} />
+              </button>
+            )
           ) : (
             <div className="memory-detail-no-photo">
               A photograph
@@ -58,18 +75,37 @@ export default function MemoryDetail({ memory }: { memory: Memory }) {
               will live here.
             </div>
           )}
+          {media.length > 1 && (
+            <div className="memory-detail-thumbnails">
+              {media.map((item, index) => (
+                <button
+                  type="button"
+                  key={item.publicId ?? item.url}
+                  className={index === selected ? "is-selected" : ""}
+                  onClick={() => setSelected(index)}
+                >
+                  {item.resourceType === "video" ? (
+                    <video src={item.url} muted preload="metadata" />
+                  ) : (
+                    <img src={item.url} alt="" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="memory-detail-copy">
-          <p className="home-eyebrow">
-            {formatDate(memory.date)} / {memory.mood}
-          </p>
+          <p className="home-eyebrow">{formatDate(memory.date)}</p>
+          <div className="memory-perspective-badge">
+            {perspective === "ritika" ? "ritika's side" : "riya's side"}
+          </div>
           <h1>{memory.title}</h1>
-          {memory.location && (
-            <p className="memory-detail-location">{memory.location}</p>
-          )}
+          <div className="memory-detail-side-label">
+            {perspective === "ritika" ? "ritika's side" : "riya's side"}
+          </div>
           <div className="memory-detail-story">
-            {memory.story.split("\n").map((paragraph) => (
-              <p key={paragraph}>{paragraph}</p>
+            {memory.story.split("\n").map((paragraph, index) => (
+              <p key={`${paragraph}-${index}`}>{paragraph}</p>
             ))}
           </div>
           <div className="memory-detail-actions">
@@ -82,6 +118,28 @@ export default function MemoryDetail({ memory }: { memory: Memory }) {
           </div>
         </div>
       </article>
+      {lightbox && current && current.resourceType !== "video" && (
+        <div
+          className="memory-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Expanded memory photo"
+          onClick={() => setLightbox(false)}
+        >
+          <button
+            type="button"
+            aria-label="Close expanded photo"
+            onClick={() => setLightbox(false)}
+          >
+            ×
+          </button>
+          <img
+            src={current.url}
+            alt={memory.title}
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
+      )}
       {confirming && (
         <div
           className="memory-confirm"

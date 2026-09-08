@@ -12,6 +12,13 @@ export const memoryMoods = [
 ] as const;
 export type MemoryMood = (typeof memoryMoods)[number];
 
+export const memoryPerspectives = ["ritika", "riya"] as const;
+export type MemoryPerspective = (typeof memoryPerspectives)[number];
+
+export function normalizeMemoryPerspective(value: unknown): MemoryPerspective {
+  return value === "ritika" || value === "riya" ? value : "ritika";
+}
+
 export type MemoryDocument = {
   _id: string;
   title: string;
@@ -19,7 +26,8 @@ export type MemoryDocument = {
   date: string;
   mood: MemoryMood;
   location?: string;
-  media?: string | CloudinaryMedia;
+  perspective?: MemoryPerspective;
+  media?: string | CloudinaryMedia | CloudinaryMedia[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -30,16 +38,19 @@ export type MemoryInput = {
   date: string;
   mood: MemoryMood;
   location?: string;
-  media?: CloudinaryMedia;
+  perspective?: MemoryPerspective;
+  media?: CloudinaryMedia[];
 };
 
 const collectionName = "memories";
-export const maxImageSize = 5_000_000;
-export const acceptedImageTypes = [
+export const maxMediaSize = 50_000_000;
+export const acceptedMediaTypes = [
   "image/jpeg",
   "image/png",
   "image/webp",
-  "image/gif",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
 ] as const;
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
@@ -49,34 +60,36 @@ export function parseMemoryFields(input: FormData) {
   const title = cleanText(input.get("title"), 140);
   const story = cleanText(input.get("story"), 5000);
   const date = cleanText(input.get("date"), 30);
-  const mood = cleanText(input.get("mood"), 30);
-  const location = cleanText(input.get("location"), 140);
+  const perspective = normalizeMemoryPerspective(input.get("perspective"));
 
   if (!title || !story || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-  if (!memoryMoods.includes(mood as MemoryMood)) return null;
 
   return {
     title,
     story,
     date,
-    mood: mood as MemoryMood,
-    ...(location ? { location } : {}),
+    mood: "Tender" as MemoryMood,
+    perspective,
   };
 }
 
-export function getMemoryImage(input: FormData) {
-  const value = input.get("media");
-  if (!(value instanceof File) || value.size === 0) return null;
-  if (
-    !acceptedImageTypes.includes(
-      value.type as (typeof acceptedImageTypes)[number],
-    )
-  ) {
-    throw new Error("Please choose a JPEG, PNG, WebP, or GIF image.");
+export function getMemoryMedia(input: FormData) {
+  const files = input
+    .getAll("media")
+    .filter((value): value is File => value instanceof File && value.size > 0);
+  for (const file of files) {
+    if (
+      !acceptedMediaTypes.includes(
+        file.type as (typeof acceptedMediaTypes)[number],
+      )
+    ) {
+      throw new Error("Please choose JPG, PNG, WebP, MP4, WebM, or MOV files.");
+    }
+    if (file.size > maxMediaSize) {
+      throw new Error("Each photo or video must be smaller than 50 MB.");
+    }
   }
-  if (value.size > maxImageSize)
-    throw new Error("Please choose an image smaller than 5 MB.");
-  return value;
+  return files;
 }
 
 export async function listMemories() {
@@ -98,6 +111,7 @@ export async function createMemory(input: MemoryInput) {
   const memory: MemoryDocument = {
     _id: randomUUID(),
     ...input,
+    perspective: normalizeMemoryPerspective(input.perspective),
     createdAt: now,
     updatedAt: now,
   };
@@ -113,18 +127,30 @@ export async function updateMemory(id: string, input: MemoryInput) {
     .collection<MemoryDocument>(collectionName)
     .findOneAndUpdate(
       { _id: id },
-      { $set: { ...input, updatedAt } },
+      {
+        $set: {
+          ...input,
+          perspective: normalizeMemoryPerspective(input.perspective),
+          updatedAt,
+        },
+      },
       { returnDocument: "after" },
     );
   return result;
 }
 
 export function getStoredCloudinaryMedia(memory: MemoryDocument) {
-  return memory.media &&
-    typeof memory.media !== "string" &&
-    memory.media.publicId
-    ? memory.media
-    : null;
+  if (!memory.media || typeof memory.media === "string") return [];
+  return Array.isArray(memory.media)
+    ? memory.media.filter((media) => media.publicId)
+    : memory.media.publicId
+      ? [memory.media]
+      : [];
+}
+
+export function getMemoryMediaArray(memory: MemoryDocument) {
+  if (!memory.media || typeof memory.media === "string") return [];
+  return Array.isArray(memory.media) ? memory.media : [memory.media];
 }
 
 export async function deleteMemory(id: string) {
@@ -136,6 +162,8 @@ export async function deleteMemory(id: string) {
 export function serializeMemory(memory: MemoryDocument) {
   return {
     ...memory,
+    media: getMemoryMediaArray(memory),
+    perspective: normalizeMemoryPerspective(memory.perspective),
     createdAt: memory.createdAt.toISOString(),
     updatedAt: memory.updatedAt.toISOString(),
   };

@@ -3,12 +3,13 @@ import { NextResponse } from "next/server";
 import { isSessionValid } from "@/app/lib/server/auth";
 import {
   deleteCloudinaryMedia,
-  uploadMemoryImage,
+  uploadMemoryMedia,
 } from "@/app/lib/server/cloudinary";
 import {
   deleteMemory,
   findMemory,
-  getMemoryImage,
+  getMemoryMedia,
+  getMemoryMediaArray,
   getStoredCloudinaryMedia,
   parseMemoryFields,
   serializeMemory,
@@ -68,34 +69,52 @@ export async function PATCH(
   if (!existing)
     return NextResponse.json({ error: "Memory not found." }, { status: 404 });
 
-  let uploadedMedia: Awaited<ReturnType<typeof uploadMemoryImage>> | undefined;
+  const uploadedMedia: Awaited<ReturnType<typeof uploadMemoryMedia>>[] = [];
   try {
-    const image = getMemoryImage(formData);
-    uploadedMedia = image ? await uploadMemoryImage(image) : undefined;
+    const files = getMemoryMedia(formData);
+    for (const file of files) uploadedMedia.push(await uploadMemoryMedia(file));
+    let requestedRemovedMedia: {
+      publicId: string;
+      resourceType: "image" | "video";
+    }[];
+    try {
+      requestedRemovedMedia = JSON.parse(
+        String(formData.get("removedMedia") ?? "[]"),
+      );
+    } catch {
+      return NextResponse.json({ error: "Invalid removed media list." }, { status: 400 });
+    }
+    const existingMedia = getMemoryMediaArray(existing);
+    const removedMedia = requestedRemovedMedia.filter((media) =>
+      existingMedia.some((existingItem) => existingItem.publicId === media.publicId),
+    );
+    const removedIds = new Set(removedMedia.map((media) => media.publicId));
+    const retainedMedia = existingMedia.filter(
+      (media) => !removedIds.has(media.publicId),
+    );
     const memory = await updateMemory(id, {
       ...input,
-      ...(uploadedMedia ? { media: uploadedMedia } : {}),
+      media: [...retainedMedia, ...uploadedMedia],
     });
     if (!memory) {
-      if (uploadedMedia) await deleteCloudinaryMedia(uploadedMedia);
+      for (const media of uploadedMedia) await deleteCloudinaryMedia(media);
       return NextResponse.json({ error: "Memory not found." }, { status: 404 });
     }
-    const oldMedia = getStoredCloudinaryMedia(existing);
-    if (uploadedMedia && oldMedia) {
+    for (const media of removedMedia) {
       try {
-        await deleteCloudinaryMedia(oldMedia);
+        await deleteCloudinaryMedia(media);
       } catch (error) {
-        console.error("Unable to remove the previous memory image.", error);
+        console.error("Unable to remove memory media.", error);
       }
     }
     return NextResponse.json({ memory: serializeMemory(memory) });
   } catch (error) {
-    if (uploadedMedia) {
+    for (const media of uploadedMedia) {
       try {
-        await deleteCloudinaryMedia(uploadedMedia);
+        await deleteCloudinaryMedia(media);
       } catch (cleanupError) {
         console.error(
-          "Unable to clean up the replacement memory image.",
+          "Unable to clean up uploaded memory media.",
           cleanupError,
         );
       }
@@ -125,18 +144,18 @@ export async function DELETE(
   if (!existing)
     return NextResponse.json({ error: "Memory not found." }, { status: 404 });
   const media = getStoredCloudinaryMedia(existing);
-  if (media) {
+  for (const item of media) {
     try {
-      const result = await deleteCloudinaryMedia(media);
+      const result = await deleteCloudinaryMedia(item);
       if (result.result !== "ok" && result.result !== "not found") {
         return NextResponse.json(
-          { error: "Unable to remove the memory image." },
+          { error: "Unable to remove memory media." },
           { status: 502 },
         );
       }
     } catch {
       return NextResponse.json(
-        { error: "Unable to remove the memory image." },
+        { error: "Unable to remove memory media." },
         { status: 502 },
       );
     }

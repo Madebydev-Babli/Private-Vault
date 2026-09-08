@@ -6,16 +6,34 @@ import gsap from "gsap";
 
 type LetterFormProps = {
   letterId?: string;
-  initial?: { title: string; content: string; date: string };
+  initial?: {
+    title: string;
+    content: string;
+    date: string;
+    author?: "ritika" | "riya";
+    recipient?: "ritika" | "riya";
+  };
 };
 
 export default function LetterForm({
   letterId,
-  initial = { title: "", content: "", date: "" },
+  initial = {
+    title: "",
+    content: "",
+    date: "",
+    author: "ritika",
+    recipient: "riya",
+  },
 }: LetterFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement | null>(null);
-  const [value, setValue] = useState(initial);
+  const [value, setValue] = useState({
+    title: initial.title,
+    content: initial.content,
+    date: initial.date,
+    author: initial.author ?? "ritika",
+    recipient: initial.recipient ?? "riya",
+  });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -35,11 +53,23 @@ export default function LetterForm({
     setValue((current) => ({ ...current, [field]: next }));
   }
 
+  function setAuthor(next: "ritika" | "riya") {
+    setValue((current) => ({
+      ...current,
+      author: next,
+      recipient: next === "ritika" ? "riya" : "ritika",
+    }));
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     if (!value.title.trim() || !value.content.trim() || !value.date) {
       setError("A title, date, and something to say are needed.");
+      return;
+    }
+    if (value.author === value.recipient) {
+      setError("Choose one person to send this letter to.");
       return;
     }
     setSaving(true);
@@ -71,6 +101,29 @@ export default function LetterForm({
 
   return (
     <form ref={formRef} className="letter-editor" onSubmit={handleSubmit}>
+      <div className="two-sides-picker two-sides-picker--compact">
+        <div className="two-sides-picker-column">
+          <p className="two-sides-picker-label">From</p>
+          <div className="two-sides-picker-grid two-sides-picker-grid--small">
+            {(["ritika", "riya"] as const).map((person) => (
+              <button
+                key={person}
+                type="button"
+                className={`two-sides-option ${value.author === person ? "two-sides-option--active" : ""}`}
+                onClick={() => setAuthor(person)}
+              >
+                <span>{person === "ritika" ? "ritika" : "riya"}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="two-sides-picker-column">
+          <p className="two-sides-picker-label">To</p>
+          <div className="letter-recipient-readout">
+            {value.recipient === "ritika" ? "ritika" : "riya"}
+          </div>
+        </div>
+      </div>
       <label className="letter-editor-field">
         Title
         <input

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import gsap from "gsap";
 import { authApi } from "@/app/lib/api";
 import { diaryEntries, storyMedia, timeCapsules } from "@/app/story-data";
@@ -188,18 +189,18 @@ export default function VaultHome() {
           <p className="home-preview-quote">
             &ldquo;{diaryEntries[0].content}&rdquo;
           </p>
-          <a className="home-arrow-link" href="/vault/letters">
+          <Link className="home-arrow-link" href="/vault/letters">
             Read the letters <span>→</span>
-          </a>
+          </Link>
         </article>
         <article className="home-capsule-preview" id="capsules">
           <p className="home-eyebrow">04 / For another day</p>
           <div className="home-capsule-mark">01</div>
           <h2>Some memories are meant to wait.</h2>
           <p>{timeCapsules[0].status}</p>
-          <a className="home-arrow-link" href="/vault/capsules">
+          <Link className="home-arrow-link" href="/vault/capsules">
             Open capsules <span>→</span>
-          </a>
+          </Link>
         </article>
       </section>
 

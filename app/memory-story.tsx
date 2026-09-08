@@ -382,7 +382,7 @@ function Section02() {
 
       <div ref={textRef}>
         <p className="panel-quote panel-quote--small">
-          I don't think I ever told you enough
+          I don&apos;t think I ever told you enough
           <br />
           how much your presence has meant to me.
           <br />
@@ -391,7 +391,7 @@ function Section02() {
           <br />
           the stupid jokes and all the moments
           <br />
-          we never thought we'd remember,
+          we never thought we&apos;d remember,
           <br />
           <br />
           you became part of my story.
@@ -502,7 +502,7 @@ function Section04() {
         className="section-subtitle"
         style={{ marginBottom: "2rem", marginTop: "-1rem" }}
       >
-        And honestly, I wouldn't change a thing.
+        And honestly, I wouldn&apos;t change a thing.
       </p>
 
       <div className="memory-grid">
@@ -695,7 +695,7 @@ function Section07() {
           <p className="panel-label">07 / still growing</p>
           <h2>Still Growing</h2>
           <p className="section-subtitle">
-            Our story didn't end with the memories we already made
+            Our story didn&apos;t end with the memories we already made
           </p>
         </div>
       </div>
